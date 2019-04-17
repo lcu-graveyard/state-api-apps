@@ -32,7 +32,7 @@ namespace LCU.State.API.Apps
 			{
 				if (state.ActiveApp != null)
 				{
-					var appGraph = req.LoadGraph<ApplicationGraph>();
+					var appGraph = req.LoadGraph<ApplicationGraph>(log);
 
 					reqData.API.ApplicationID = state.ActiveApp.ID;
 

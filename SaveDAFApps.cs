@@ -37,7 +37,7 @@ namespace LCU.State.API.Apps
 				{
 					log.LogInformation($"Saving DAF Apps: {reqData.DAFApps?.ToJSON()}");
 
-					var appGraph = req.LoadGraph<ApplicationGraph>();
+					var appGraph = req.LoadGraph<ApplicationGraph>(log);
 
 					reqData.DAFApps.Each(da =>
 					{
@@ -77,7 +77,7 @@ namespace LCU.State.API.Apps
 			{
 				log.LogInformation($"Unpacking view: {viewApp.ToJSON()}");
 
-				var entGraph = req.LoadGraph<EnterpriseGraph>();
+				var entGraph = req.LoadGraph<EnterpriseGraph>(log);
 
 				var ent = await entGraph.LoadByPrimaryAPIKey(entApiKey);
 

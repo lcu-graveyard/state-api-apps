@@ -30,7 +30,7 @@ namespace LCU.State.API.Apps
 		{
 			return await req.WithState<SaveAppPrioritiesRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
 			{
-				var appGraph = req.LoadGraph<ApplicationGraph>();
+				var appGraph = req.LoadGraph<ApplicationGraph>(log);
 
 				state.Apps = await appGraph.ListApplications(details.EnterpriseAPIKey);
 

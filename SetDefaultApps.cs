@@ -28,7 +28,7 @@ namespace LCU.State.API.Apps
 		{
 			return await req.WithState<SetDefaultAppsRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
 			{
-				var appGraph = req.LoadGraph<ApplicationGraph>();
+				var appGraph = req.LoadGraph<ApplicationGraph>(log);
 
 				if (reqData.State && !state.DefaultAppsEnabled)
 				{
