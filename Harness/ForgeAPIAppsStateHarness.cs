@@ -8,6 +8,7 @@ using Fathym.Design.Singleton;
 using LCU.Graphs;
 using LCU.Graphs.Registry.Enterprises;
 using LCU.Graphs.Registry.Enterprises.Apps;
+using LCU.Graphs.Registry.Enterprises.Identity;
 using LCU.Runtime;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
