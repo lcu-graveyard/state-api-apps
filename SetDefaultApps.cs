@@ -1,5 +1,6 @@
 using LCU.Graphs.Registry.Enterprises;
 using LCU.Graphs.Registry.Enterprises.Apps;
+using LCU.State.API.ForgePublic.Harness;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -26,25 +27,10 @@ namespace LCU.State.API.Apps
 			[HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
 			ILogger log)
 		{
-			return await req.WithState<SetDefaultAppsRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
-			{
-				var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
-				if (reqData.State && !state.DefaultAppsEnabled)
-				{
-					await appGraph.CreateDefaultApps(details.EnterpriseAPIKey);
-
-					state.DefaultApps = await appGraph.LoadDefaultApplications(details.EnterpriseAPIKey);
-
-					state.DefaultAppsEnabled = await appGraph.HasDefaultApps(details.EnterpriseAPIKey);
-				}
-				else if (!reqData.State)
-				{
-					log.LogInformation("Disabling Default Apps is not currently supported...");
-				}
-
-				return state;
-			});
+			return await req.Manage<SetDefaultAppsRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
+            {
+                return await mgr.SetDefaultApps(reqData.State);
+            });
 		}
 	}
 }

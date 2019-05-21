@@ -13,6 +13,7 @@ using LCU.Graphs.Registry.Enterprises.Apps;
 using LCU.Graphs;
 using System.Linq;
 using System.Collections.Generic;
+using LCU.State.API.ForgePublic.Harness;
 
 namespace LCU.State.API.Apps
 {
@@ -31,32 +32,10 @@ namespace LCU.State.API.Apps
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
 		{
-			return await req.WithState<RemoveDAFAPIAppRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
-			{
-				if (state.ActiveApp != null)
-				{
-					var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
-					reqData.API.ApplicationID = state.ActiveApp.ID;
-
-					var app = await appGraph.RemoveDAFApplication(details.EnterpriseAPIKey, reqData.API);
-
-					state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
-
-					if (state.ActiveDAFApps.IsNullOrEmpty())
-						state.ActiveDAFApps = new List<DAFApplicationConfiguration>()
-						{
-							new DAFApplicationConfiguration()
-						};
-
-					if (state.ActiveDAFApps.Any(da => !da.ID.IsEmpty()))
-						state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
-					else
-						state.ActiveAppType = null;
-				}
-
-				return state;
-			});
+			return await req.Manage<RemoveDAFAPIAppRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
+            {
+                return await mgr.RemoveDAFAPIApp(reqData.API);
+            });
 		}
     }
 }

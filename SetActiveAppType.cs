@@ -12,6 +12,7 @@ using LCU.Graphs.Registry.Enterprises.Apps;
 using LCU.Graphs.Registry.Enterprises;
 using System.Linq;
 using System.Collections.Generic;
+using LCU.State.API.ForgePublic.Harness;
 
 namespace LCU.State.API.Apps
 {
@@ -30,12 +31,10 @@ namespace LCU.State.API.Apps
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
 		{
-			return await req.WithState<SetActiveAppTypeRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
-			{
-				state.ActiveAppType = reqData.Type;
-
-				return state;
-			});
+			return await req.Manage<SetActiveAppTypeRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
+            {
+                return await mgr.SetActiveAppType(reqData.Type);
+            });
 		}
     }
 }
