@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System.Runtime.Serialization;
 using LCU.Graphs.Registry.Enterprises.Apps;
 using LCU.Graphs.Registry.Enterprises;
+using LCU.State.API.ForgePublic.Harness;
 
 namespace LCU.State.API.Apps
 {
@@ -31,19 +32,10 @@ namespace LCU.State.API.Apps
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
 		{
-			return await req.WithState<ToggleAppAsDefaultRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
-			{
-				var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
-				if (reqData.IsAdd)
-					await appGraph.AddDefaultApp(details.EnterpriseAPIKey, reqData.AppID);
-				else
-					await appGraph.RemoveDefaultApp(details.EnterpriseAPIKey, reqData.AppID);
-
-				state.DefaultApps = await appGraph.LoadDefaultApplications(details.EnterpriseAPIKey);
-
-				return state;
-			});
+			return await req.Manage<ToggleAppAsDefaultRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
+            {
+                return await mgr.ToggleAppAsDefault(reqData.AppID, reqData.IsAdd);
+            });
 		}
     }
 }

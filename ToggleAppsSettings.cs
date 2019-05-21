@@ -1,4 +1,5 @@
 using LCU.Graphs.Registry.Enterprises.Apps;
+using LCU.State.API.ForgePublic.Harness;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -10,12 +11,6 @@ using System.Threading.Tasks;
 
 namespace LCU.State.API.Apps
 {
-	[Serializable]
-	[DataContract]
-	public class ToggleAppsSettingsRequest
-	{
-	}
-
 	public static class ToggleAppsSettings
 	{
 		[FunctionName("ToggleAppsSettings")]
@@ -23,17 +18,10 @@ namespace LCU.State.API.Apps
 			[HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
 			ILogger log)
 		{
-			return await req.WithState<SetActiveRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
-			{
-				state.ActiveApp = null;
-
-				state.IsAppsSettings = !state.IsAppsSettings;
-
-				if (!state.IsAppsSettings)
-					state.AppsNavState = null;
-
-				return state;
-			});
+			return await req.Manage<dynamic, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
+            {
+                return await mgr.ToggleAppsSettings();
+            });
 		}
 	}
 }

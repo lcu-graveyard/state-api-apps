@@ -1,6 +1,7 @@
 using LCU.Graphs;
 using LCU.Graphs.Registry.Enterprises;
 using LCU.Graphs.Registry.Enterprises.Apps;
+using LCU.State.API.ForgePublic.Harness;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -28,26 +29,10 @@ namespace LCU.State.API.Apps
 			[HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
 			ILogger log)
 		{
-			return await req.WithState<AddDAFAPIAppRequest, LCUAppsState>(log, async (details, reqData, state, stateMgr) =>
-			{
-				if (state.ActiveApp != null)
-				{
-					var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
-					reqData.API.ApplicationID = state.ActiveApp.ID;
-
-					if (reqData.API.ID.IsEmpty() && reqData.API.Priority <= 0)
-						reqData.API.Priority = state.ActiveDAFApps.Max(a => a.Priority) + 500;
-
-					var app = await appGraph.SaveDAFApplication(details.EnterpriseAPIKey, reqData.API);
-
-					state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
-
-					state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
-				}
-
-				return state;
-			});
+			return await req.Manage<AddDAFAPIAppRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
+            {
+                return await mgr.AddDAFAPIApp(reqData.API);
+            });
 		}
 	}
 }
