@@ -19,7 +19,8 @@ namespace LCU.State.API.ForgePublic.Harness
     public class ForgeAPIAppsStateHarness : LCUStateHarness<LCUAppsState>
     {
         #region Fields
-        protected readonly IdentityGraph idGraph;
+        protected readonly ApplicationGraph appGraph;
+        
         #endregion
 
         #region Properties
@@ -30,7 +31,7 @@ namespace LCU.State.API.ForgePublic.Harness
         public ForgeAPIAppsStateHarness(HttpRequest req, ILogger log, LCUAppsState state)
             : base(req, log, state)
         {
-            idGraph = req.LoadGraph<IdentityGraph>(log);
+            appGraph = req.LoadGraph<ApplicationGraph>(log);
         }
         #endregion
 
@@ -39,8 +40,6 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             if (state.ActiveApp != null)
             {
-                var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
                 api.ApplicationID = state.ActiveApp.ID;
 
                 if (api.ID.IsEmpty() && api.Priority <= 0)
@@ -58,8 +57,6 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> Refresh()
         {
-            var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
             new[] {
                     Task.Run(async () => {
                         state.Apps = await appGraph.ListApplications(details.EnterpriseAPIKey);
@@ -106,8 +103,6 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             if (state.ActiveApp != null)
             {
-                var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
                 api.ApplicationID = state.ActiveApp.ID;
 
                 var app = await appGraph.RemoveDAFApplication(details.EnterpriseAPIKey, api);
@@ -132,8 +127,6 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> SaveApp(Application application)
         {
-            var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
             application.EnterprisePrimaryAPIKey = details.EnterpriseAPIKey;
 
             if (application.Hosts.IsNullOrEmpty())
@@ -163,8 +156,6 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> SaveAppPriorities(List<AppPriorityModel> applications)
         {
-            var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
             state.Apps = await appGraph.ListApplications(details.EnterpriseAPIKey);
 
             applications.Reverse();
@@ -239,8 +230,6 @@ namespace LCU.State.API.ForgePublic.Harness
             {
                 log.LogInformation($"Saving DAF Apps: {dafApps?.ToJSON()}");
 
-                var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
                 dafApps.Each(da =>
                 {
                     da.ApplicationID = state.ActiveApp.ID;
@@ -271,8 +260,6 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> SetActive(Guid? applicationID)
         {
-            var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
             state.ActiveApp = state.Apps.FirstOrDefault(a => a.ID == applicationID);
 
             if (state.ActiveApp != null)
@@ -345,8 +332,6 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> SetDefaultApps(bool isDefault)
         {
-            var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
             if (isDefault && !state.DefaultAppsEnabled)
             {
                 await appGraph.CreateDefaultApps(details.EnterpriseAPIKey);
@@ -365,8 +350,6 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> ToggleAppAsDefault(Guid appID, bool isAdd)
         {
-            var appGraph = req.LoadGraph<ApplicationGraph>(log);
-
             if (isAdd)
                 await appGraph.AddDefaultApp(details.EnterpriseAPIKey, appID);
             else
