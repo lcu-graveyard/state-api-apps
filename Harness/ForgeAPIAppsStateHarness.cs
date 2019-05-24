@@ -19,7 +19,7 @@ namespace LCU.State.API.ForgePublic.Harness
     public class ForgeAPIAppsStateHarness : LCUStateHarness<LCUAppsState>
     {
         #region Fields
-        protected readonly IdentityGraph idGraph;
+        
         #endregion
 
         #region Properties
@@ -30,7 +30,7 @@ namespace LCU.State.API.ForgePublic.Harness
         public ForgeAPIAppsStateHarness(HttpRequest req, ILogger log, LCUAppsState state)
             : base(req, log, state)
         {
-            idGraph = req.LoadGraph<IdentityGraph>(log);
+            
         }
         #endregion
 
