@@ -9,6 +9,7 @@ using LCU.Graphs;
 using LCU.Graphs.Registry.Enterprises;
 using LCU.Graphs.Registry.Enterprises.Apps;
 using LCU.Graphs.Registry.Enterprises.Identity;
+using LCU.Presentation.Personas.Applications;
 using LCU.Runtime;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -19,8 +20,8 @@ namespace LCU.State.API.ForgePublic.Harness
     public class ForgeAPIAppsStateHarness : LCUStateHarness<LCUAppsState>
     {
         #region Fields
-        protected readonly ApplicationGraph appGraph;
-        
+        protected readonly ApplicationManagerClient appMgr;
+
         #endregion
 
         #region Properties
@@ -31,7 +32,7 @@ namespace LCU.State.API.ForgePublic.Harness
         public ForgeAPIAppsStateHarness(HttpRequest req, ILogger log, LCUAppsState state)
             : base(req, log, state)
         {
-            appGraph = req.LoadGraph<ApplicationGraph>(log);
+            appMgr = req.ResolveClient<ApplicationManagerClient>(log);
         }
         #endregion
 
@@ -40,17 +41,57 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             if (state.ActiveApp != null)
             {
-                api.ApplicationID = state.ActiveApp.ID;
+                var saved = await appDev.SaveDAFAPI(api, state.ActiveApp.ID, details.EnterpriseAPIKey);
 
-                if (api.ID.IsEmpty() && api.Priority <= 0)
-                    api.Priority = state.ActiveDAFApps.Max(a => a.Priority) + 500;
-
-                var app = await appGraph.SaveDAFApplication(details.EnterpriseAPIKey, api);
-
-                state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
-
-                state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
+                await LoadDAFApps();
             }
+
+            return state;
+        }
+
+        public virtual async Task<LCUAppsState> LoadApps()
+        {
+            var apps = await appMgr.ListApplications(details.EnterpriseAPIKey);
+
+            state.Apps = apps.Model;
+
+            return state;
+        }
+
+        public virtual async Task<LCUAppsState> LoadDefaultApps()
+        {
+            var apps = await appMgr.ListDefaultApplications(details.EnterpriseAPIKey);
+
+            state.DefaultApps = apps.Model;
+
+            var defApps = await appMgr.HasDefaultApplications(details.EnterpriseAPIKey);
+
+            state.DefaultAppsEnabled = defApps.Status;
+
+            return state;
+        }
+
+        public virtual async Task<LCUAppsState> LoadDAFApps(List<DAFApplicationConfiguration> dafApps = null)
+        {
+            if (dafApps.IsNullOrEmpty())
+            {
+                var dafAppsResponse = await appMgr.ListDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
+
+                state.ActiveDAFApps = dafAppsResponse.Model;
+            }
+            else
+                state.ActiveDAFApps = dafApps;
+
+            if (state.ActiveDAFApps.IsNullOrEmpty())
+                state.ActiveDAFApps = new List<DAFApplicationConfiguration>()
+                {
+                    new DAFApplicationConfiguration()
+                };
+
+            if (state.ActiveDAFApps.Any(da => !da.ID.IsEmpty()))
+                state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
+            else
+                state.ActiveAppType = null;
 
             return state;
         }
@@ -58,39 +99,28 @@ namespace LCU.State.API.ForgePublic.Harness
         public virtual async Task<LCUAppsState> Refresh()
         {
             new[] {
-                    Task.Run(async () => {
-                        state.Apps = await appGraph.ListApplications(details.EnterpriseAPIKey);
-                    }),
-                    Task.Run(async () => {
-                        state.DefaultApps = await appGraph.LoadDefaultApplications(details.EnterpriseAPIKey);
-                    }),
-                    Task.Run(async () => {
-                        state.DefaultAppsEnabled = await appGraph.HasDefaultApps(details.EnterpriseAPIKey);
-                    }),
-                    Task.Run(async () => {
-                        if (state.ActiveApp != null)
-                        {
-                            state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
+                Task.Run(async () => {
+                    await LoadApps();
+                }),
+                Task.Run(async () => {
+                    await LoadDefaultApps();
+                }),
+                Task.Run(async () => {
+                    var apps = await appMgr.HasDefaultApplications(details.EnterpriseAPIKey);
 
-                            if (state.ActiveDAFApps.IsNullOrEmpty())
-                                state.ActiveDAFApps = new List<DAFApplicationConfiguration>()
-                                {
-                                    new DAFApplicationConfiguration()
-                                };
+                    state.DefaultAppsEnabled = apps.Status;
+                }),
+                Task.Run(async () => {
+                    if (state.ActiveApp != null)
+                        await LoadDAFApps();
+                    else
+                    {
+                        state.ActiveAppType = null;
 
-                            if (state.ActiveDAFApps.Any(da => !da.ID.IsEmpty()))
-                                state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
-                            else
-                                state.ActiveAppType = null;
-                        }
-                        else
-                        {
-                            state.ActiveAppType = null;
-
-                            state.ActiveDAFApps = new List<DAFApplicationConfiguration>();
-                        }
-                    })
-                }.WhenAll();
+                        state.ActiveDAFApps = new List<DAFApplicationConfiguration>();
+                    }
+                })
+            }.WhenAll();
 
             state.IsAppsSettings = false;
 
@@ -103,23 +133,9 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             if (state.ActiveApp != null)
             {
-                api.ApplicationID = state.ActiveApp.ID;
+                var removed = await appDev.RemoveDAFApp(state.ActiveApp.ID, api.ID, details.EnterpriseAPIKey);
 
-                var app = await appGraph.RemoveDAFApplication(details.EnterpriseAPIKey, api);
-
-                state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
-
-                if (state.ActiveDAFApps.IsNullOrEmpty())
-                    state.ActiveDAFApps = new List<DAFApplicationConfiguration>()
-                        {
-                            new DAFApplicationConfiguration()
-
-                        };
-
-                if (state.ActiveDAFApps.Any(da => !da.ID.IsEmpty()))
-                    state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
-                else
-                    state.ActiveAppType = null;
+                await LoadDAFApps();
             }
 
             return state;
@@ -127,97 +143,27 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> SaveApp(Application application)
         {
-            application.EnterprisePrimaryAPIKey = details.EnterpriseAPIKey;
+            var app = await appDev.SaveApp(application, details.Host, String.Empty, details.EnterpriseAPIKey);
 
-            if (application.Hosts.IsNullOrEmpty())
-                application.Hosts = new List<string>();
+            await LoadApps();
 
-            if (!application.Hosts.Contains(details.Host))
-                application.Hosts.Add(details.Host);
+            await SetActive(app.Model.ID);
 
-            if (application.ID.IsEmpty() && application.Priority <= 0 && !state.Apps.IsNullOrEmpty())
-                application.Priority = state.Apps.First().Priority + 500;
-
-            var app = await appGraph.Save(application);
-
-            state.Apps = await appGraph.ListApplications(details.EnterpriseAPIKey);
-
-            state.ActiveApp = state.Apps.FirstOrDefault(a => a.ID == app.ID);
+            state.ActiveApp = state.Apps.FirstOrDefault(a => a.ID == app.Model.ID);
 
             if (state.ActiveApp != null)
-            {
-                state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
-
-                state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
-            }
+                await LoadDAFApps();
 
             return state;
         }
 
         public virtual async Task<LCUAppsState> SaveAppPriorities(List<AppPriorityModel> applications)
         {
-            state.Apps = await appGraph.ListApplications(details.EnterpriseAPIKey);
-
             applications.Reverse();
 
-            var defaultGroups = new Dictionary<int, List<AppPriorityModel>>();
+            var apps = await appDev.SaveAppPriorities(applications, details.EnterpriseAPIKey);
 
-            var nextDefaultPriority = 0;
-
-            applications.Each(
-                (app) =>
-                {
-                    if (app.IsDefault)
-                    {
-                        nextDefaultPriority = app.Priority;
-
-                        defaultGroups[nextDefaultPriority] = new List<AppPriorityModel>();
-                    }
-                    else
-                    {
-                        if (!defaultGroups.ContainsKey(nextDefaultPriority))
-                            defaultGroups[nextDefaultPriority] = new List<AppPriorityModel>();
-
-                        defaultGroups[nextDefaultPriority].Add(app);
-                    }
-                });
-
-            var groupIndex = 0;
-
-            var saveApps = new List<Application>();
-
-            defaultGroups.Each(dg =>
-            {
-                var minimum = dg.Key;
-
-                var maximum = -1;
-
-                if (groupIndex < defaultGroups.Count - 1)
-                    maximum = defaultGroups.Keys.ElementAt(groupIndex + 1);
-
-                var groupSize = dg.Value.Count;
-
-                var step = maximum <= 0 ? 5000 : (int)Math.Floor((decimal)(maximum - minimum) / groupSize);
-
-                var lastPriority = minimum;
-
-                saveApps.AddRange(dg.Value.Select(v =>
-                {
-                    var app = state.Apps.FirstOrDefault(a => a.ID == v.AppID);
-
-                    app.Priority = lastPriority = lastPriority + step;
-
-                    return app;
-                }));
-
-                groupIndex++;
-            });
-
-            var appSaves = saveApps.Select(sa => appGraph.Save(sa)).ToList();
-
-            var apps = await appSaves.WhenAll();
-
-            state.Apps = await appGraph.ListApplications(details.EnterpriseAPIKey);
+            await LoadApps();
 
             state.AppsNavState = null;
 
@@ -228,31 +174,9 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             if (state.ActiveApp != null)
             {
-                log.LogInformation($"Saving DAF Apps: {dafApps?.ToJSON()}");
+                var dafAppsResponse = await appDev.SaveDAFApps(dafApps, state.ActiveApp.ID, details.EnterpriseAPIKey);
 
-                dafApps.Each(da =>
-                {
-                    da.ApplicationID = state.ActiveApp.ID;
-
-                    if (da.ID.IsEmpty() && da.Priority <= 0)
-                        da.Priority = dafApps.Max(a => a.Priority) + 500;
-
-                    var status = Status.Success;
-
-                    log.LogInformation($"Saving DAF App: {da.ToJSON()}");
-
-                    if (da != null && da.Metadata.ContainsKey("NPMPackage"))
-                        status = unpackView(req, da, details.EnterpriseAPIKey, log).Result;
-
-                    if (status)
-                    {
-                        var dafApp = appGraph.SaveDAFApplication(details.EnterpriseAPIKey, da).Result;
-                    }
-                });
-
-                state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
-
-                state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
+                await LoadDAFApps(dafAppsResponse.Model);
             }
 
             return state;
@@ -260,22 +184,13 @@ namespace LCU.State.API.ForgePublic.Harness
 
         public virtual async Task<LCUAppsState> SetActive(Guid? applicationID)
         {
-            state.ActiveApp = state.Apps.FirstOrDefault(a => a.ID == applicationID);
+            var activeApp = state.Apps.FirstOrDefault(a => a.ID == applicationID);
 
-            if (state.ActiveApp != null)
+            if (activeApp != null && activeApp.ID != state.ActiveApp.ID)
             {
-                state.ActiveDAFApps = await appGraph.GetDAFApplications(details.EnterpriseAPIKey, state.ActiveApp.ID);
+                state.ActiveApp = activeApp;
 
-                if (state.ActiveDAFApps.IsNullOrEmpty())
-                    state.ActiveDAFApps = new List<DAFApplicationConfiguration>()
-                        {
-                            new DAFApplicationConfiguration()
-                        };
-
-                if (state.ActiveDAFApps.Any(da => !da.ID.IsEmpty()))
-                    state.ActiveAppType = state.ActiveDAFApps.Any(da => da.Metadata.ContainsKey("APIRoot")) ? "API" : "View";
-                else
-                    state.ActiveAppType = null;
+                await LoadDAFApps();
             }
             else
             {
@@ -334,11 +249,9 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             if (isDefault && !state.DefaultAppsEnabled)
             {
-                await appGraph.CreateDefaultApps(details.EnterpriseAPIKey);
+                await appDev.EnsureDefaultApps(details.EnterpriseAPIKey);
 
-                state.DefaultApps = await appGraph.LoadDefaultApplications(details.EnterpriseAPIKey);
-
-                state.DefaultAppsEnabled = await appGraph.HasDefaultApps(details.EnterpriseAPIKey);
+                await LoadDefaultApps();
             }
             else if (!isDefault)
             {
@@ -348,14 +261,11 @@ namespace LCU.State.API.ForgePublic.Harness
             return state;
         }
 
-        public virtual async Task<LCUAppsState> ToggleAppAsDefault(Guid appID, bool isAdd)
+        public virtual async Task<LCUAppsState> ToggleAppAsDefault(Guid appId, bool isAdd)
         {
-            if (isAdd)
-                await appGraph.AddDefaultApp(details.EnterpriseAPIKey, appID);
-            else
-                await appGraph.RemoveDefaultApp(details.EnterpriseAPIKey, appID);
+            await appDev.ToggleAppAsDefault(details.EnterpriseAPIKey, appId);
 
-            state.DefaultApps = await appGraph.LoadDefaultApplications(details.EnterpriseAPIKey);
+            await LoadDefaultApps();
 
             return state;
         }
@@ -374,46 +284,6 @@ namespace LCU.State.API.ForgePublic.Harness
         #endregion
 
         #region Helpers
-        private static async Task<Status> unpackView(HttpRequest req, DAFApplicationConfiguration dafApp, string entApiKey,
-            ILogger log)
-        {
-            var viewApp = dafApp.JSONConvert<DAFViewConfiguration>();
-
-            if (viewApp.PackageVersion != "dev-stream")
-            {
-                log.LogInformation($"Unpacking view: {viewApp.ToJSON()}");
-
-                var entGraph = req.LoadGraph<EnterpriseGraph>(log);
-
-                var ent = await entGraph.LoadByPrimaryAPIKey(entApiKey);
-
-                var client = new HttpClient();
-
-                var npmUnpackUrl = Environment.GetEnvironmentVariable("NPM-PUBLIC-URL");
-
-                var npmUnpackCode = Environment.GetEnvironmentVariable("NPM-PUBLIC-CODE");
-
-                var npmUnpack = $"{npmUnpackUrl}/api/npm-unpack?code={npmUnpackCode}&pkg={viewApp.NPMPackage}&version={viewApp.PackageVersion}&applicationId={dafApp.ApplicationID}&enterpriseId={ent.ID}";
-
-                log.LogInformation($"Unpacking view at: {npmUnpack}");
-
-                var response = await client.GetAsync(npmUnpack);
-
-                object statusObj = await response.Content.ReadAsJSONAsync<dynamic>();
-
-                var status = statusObj.JSONConvert<Status>();
-
-                log.LogInformation($"View unpacked: {status.ToJSON()}");
-
-                if (status)
-                    dafApp.Metadata["PackageVersion"] = status.Metadata["Version"];
-
-                return status;
-            }
-            else
-                return Status.Success.Clone("Success", new { PackageVersion = viewApp.PackageVersion });
-        }
-
         #endregion
     }
 }
