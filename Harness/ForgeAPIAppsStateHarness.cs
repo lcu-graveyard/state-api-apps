@@ -29,10 +29,10 @@ namespace LCU.State.API.ForgePublic.Harness
         #endregion
 
         #region Constructors
-        public ForgeAPIAppsStateHarness(HttpRequest req, ILogger log, LCUAppsState state)
-            : base(req, log, state)
+        public ForgeAPIAppsStateHarness(HttpRequest req, ILogger logger, LCUAppsState state)
+            : base(req, logger, state)
         {
-            appMgr = req.ResolveClient<ApplicationManagerClient>(log);
+            appMgr = req.ResolveClient<ApplicationManagerClient>(logger);
         }
         #endregion
 
@@ -255,7 +255,7 @@ namespace LCU.State.API.ForgePublic.Harness
             }
             else if (!isDefault)
             {
-                log.LogInformation("Disabling Default Apps is not currently supported...");
+                logger.LogInformation("Disabling Default Apps is not currently supported...");
             }
 
             return state;
