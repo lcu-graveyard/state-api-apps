@@ -186,7 +186,7 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             var activeApp = state.Apps.FirstOrDefault(a => a.ID == applicationID);
 
-            if (activeApp != null && activeApp.ID != state.ActiveApp.ID)
+            if (activeApp != null && activeApp.ID != state.ActiveApp?.ID)
             {
                 state.ActiveApp = activeApp;
 
