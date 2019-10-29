@@ -20,6 +20,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<dynamic, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Toggling Apps Settings");
+
                 return await mgr.ToggleAppsSettings();
             });
 		}

@@ -29,6 +29,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<SetDefaultAppsRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Setting Default Apps: {reqData.State}");
+
                 return await mgr.SetDefaultApps(reqData.State);
             });
 		}

@@ -30,6 +30,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<SetAppsNavStateRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Setting Apps Nav State: {reqData.State}");
+
                 return await mgr.SetAppsNavState(reqData.State);
             });
 		}

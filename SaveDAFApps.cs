@@ -34,6 +34,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<SaveDAFAppsRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Saving DAF Apps: {reqData.DAFApps.ToJSON()}");
+
                 return await mgr.SaveDAFApps(reqData.DAFApps);
             });
 		}
