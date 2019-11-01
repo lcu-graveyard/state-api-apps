@@ -32,6 +32,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<SaveAppRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Saving Application: {reqData.Application.Name}");
+
                 return await mgr.SaveApp(reqData.Application);
             });
 		}

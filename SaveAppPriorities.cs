@@ -31,6 +31,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<SaveAppPrioritiesRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Saving App Priorities: {reqData.Apps.ToJSON()}");
+
                 return await mgr.SaveAppPriorities(reqData.Apps);
             });
 		}

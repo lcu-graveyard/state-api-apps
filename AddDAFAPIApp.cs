@@ -31,6 +31,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<AddDAFAPIAppRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Add DAF API App: {reqData.API.ID}");
+
                 return await mgr.AddDAFAPIApp(reqData.API);
             });
 		}

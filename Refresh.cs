@@ -22,6 +22,7 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<dynamic, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Refreshing App");
                 return await mgr.Refresh();
             });
 		}
