@@ -34,6 +34,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<ToggleAppAsDefaultRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Toggling Apps As Default: {reqData.AppID} {reqData.IsAdd}");
+
                 return await mgr.ToggleAppAsDefault(reqData.AppID, reqData.IsAdd);
             });
 		}

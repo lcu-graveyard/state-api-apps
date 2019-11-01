@@ -9,8 +9,8 @@ using LCU.Graphs;
 using LCU.Graphs.Registry.Enterprises;
 using LCU.Graphs.Registry.Enterprises.Apps;
 using LCU.Graphs.Registry.Enterprises.Identity;
-using LCU.Presentation.Personas.Applications;
-using LCU.Runtime;
+using LCU.Personas.Client.Applications;
+using LCU.StateAPI;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -186,7 +186,7 @@ namespace LCU.State.API.ForgePublic.Harness
         {
             var activeApp = state.Apps.FirstOrDefault(a => a.ID == applicationID);
 
-            if (activeApp != null && activeApp.ID != state.ActiveApp.ID)
+            if (activeApp != null && activeApp.ID != state.ActiveApp?.ID)
             {
                 state.ActiveApp = activeApp;
 

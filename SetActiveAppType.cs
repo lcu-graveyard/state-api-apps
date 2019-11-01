@@ -33,6 +33,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<SetActiveAppTypeRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Setting Active App Type: {reqData.Type}");
+
                 return await mgr.SetActiveAppType(reqData.Type);
             });
 		}

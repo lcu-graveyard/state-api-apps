@@ -32,6 +32,8 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<SetActiveRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Setting Application Active: {reqData.ApplicationID}");
+
                 return await mgr.SetActive(reqData.ApplicationID);
             });
 		}

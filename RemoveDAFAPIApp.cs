@@ -34,6 +34,7 @@ namespace LCU.State.API.Apps
 		{
 			return await req.Manage<RemoveDAFAPIAppRequest, LCUAppsState, ForgeAPIAppsStateHarness>(log, async (mgr, reqData) =>
             {
+				log.LogInformation($"Removing DAF API: {reqData.API.ID}");
                 return await mgr.RemoveDAFAPIApp(reqData.API);
             });
 		}
